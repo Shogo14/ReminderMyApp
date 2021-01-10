@@ -2,8 +2,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_kindle/user_state.dart';
 import 'package:provider/provider.dart';
+import 'package:reminder_app/user_state.dart';
 
 import 'chat_page.dart';
 
@@ -18,100 +18,160 @@ class _LoginPageState extends State<LoginPage> {
   // 入力したメールアドレス・パスワード
   String email = '';
   String password = '';
+
+  // フォーカス管理用のFocusNode
+  final emailFocus = FocusNode();
+  final passwordFocus = FocusNode();
+
+  final _formKey = GlobalKey<FormState>();
   @override
   Widget build(BuildContext context) {
     Firebase.initializeApp();
     final UserState userState = Provider.of<UserState>(context);
     User user;
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Reminder App'),
+      ),
       body: Center(
-        child: Container(
-          padding: EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              // メールアドレス入力
-              TextFormField(
-                decoration: InputDecoration(labelText: 'メールアドレス'),
-                onChanged: (String value) {
-                  setState(() {
-                    email = value;
-                  });
-                },
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Text(
+                'Reminder Appへようこそ！',
+                style: TextStyle(fontSize: 30),
               ),
-              // パスワード入力
-              TextFormField(
-                decoration: InputDecoration(labelText: 'パスワード'),
-                obscureText: true,
-                onChanged: (String value) {
-                  setState(() {
-                    password = value;
-                  });
-                },
-              ),
-              Container(
-                padding: EdgeInsets.all(8),
-                // メッセージ表示
-                child: Text(infoText),
-              ),
-              Container(
-                width: double.infinity,
-                // ユーザー登録ボタン
-                child: RaisedButton(
-                  color: Colors.blue,
-                  textColor: Colors.white,
-                  child: Text('ユーザー登録'),
-                  onPressed: () async {
-                    try {
-                      user = await UserSignUp(userState, email, password);
-                      // チャット画面に遷移＋ログイン画面を破棄
-                      await Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(builder: (context) {
-                          // ユーザー情報を渡す
-                          return ReminderPage(user);
-                        }),
-                      );
-                    } catch (e) {
-                      // ユーザー登録に失敗した場合
-                      setState(() async {
-                        infoText = "登録に失敗しました。";
-                      });
-                      print(e.messag);
-                    }
-                  },
+            ),
+            Container(
+              padding: EdgeInsets.all(24),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    // メールアドレス入力
+                    emailFormField(context),
+                    // パスワード入力
+                    passwordFormField(context),
+                    Container(
+                      padding: EdgeInsets.all(8),
+                      // メッセージ表示
+                      child: Text(infoText),
+                    ),
+                    Container(
+                      width: double.infinity,
+                      // ユーザー登録ボタン
+                      child: SignUpButton(context, userState, user),
+                    ),
+                    Container(
+                      width: double.infinity,
+                      // ログイン登録ボタン
+                      child: LoginButton(context, userState, user),
+                    ),
+                  ],
                 ),
               ),
-              Container(
-                width: double.infinity,
-                // ログイン登録ボタン
-                child: OutlineButton(
-                  textColor: Colors.blue,
-                  child: Text('ログイン'),
-                  onPressed: () async {
-                    try {
-                      user = await UserLogin(userState, email, password);
-
-                      // チャット画面に遷移＋ログイン画面を破棄
-                      await Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(builder: (context) {
-                          // ユーザー情報を渡す
-                          return ReminderPage(user);
-                        }),
-                      );
-                    } catch (e) {
-                      // ログインに失敗した場合
-                      setState(() {
-                        infoText = "ログインに失敗しました。メールアドレスかパスワードに誤りがあります。";
-                      });
-                      print(e.message);
-                    }
-                  },
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
+    );
+  }
+
+  TextFormField emailFormField(BuildContext context) {
+    // メールアドレス入力
+    return TextFormField(
+      decoration: InputDecoration(labelText: 'メールアドレス'),
+      autofocus: true,
+      focusNode: emailFocus,
+      onFieldSubmitted: (v) {
+        FocusScope.of(context).requestFocus(passwordFocus);
+      },
+      validator: (String value) {
+        return EmailValidation(value);
+      },
+      onChanged: (String value) {
+        setState(() {
+          email = value;
+        });
+      },
+    );
+  }
+
+  TextFormField passwordFormField(BuildContext context) {
+    // パスワード入力
+    return TextFormField(
+      decoration: InputDecoration(labelText: 'パスワード'),
+      obscureText: true,
+      focusNode: passwordFocus,
+      validator: (String value) {
+        return PasswordValidation(value);
+      },
+      onChanged: (String value) {
+        setState(() {
+          password = value;
+        });
+      },
+    );
+  }
+
+  RaisedButton SignUpButton(
+      BuildContext context, UserState userState, User user) {
+    return RaisedButton(
+      color: Colors.blue,
+      textColor: Colors.white,
+      child: Text('ユーザー登録'),
+      onPressed: () async {
+        // バリデーションチェック
+        if (_formKey.currentState.validate()) {
+          try {
+            user = await UserSignUp(userState, email, password);
+            // チャット画面に遷移＋ログイン画面を破棄
+            await Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (context) {
+                // ユーザー情報を渡す
+                return ReminderPage(user);
+              }),
+            );
+          } catch (e) {
+            // ユーザー登録に失敗した場合
+            setState(() async {
+              infoText = "登録に失敗しました。";
+            });
+            print(e.messag);
+          }
+        }
+      },
+    );
+  }
+
+  OutlineButton LoginButton(
+      BuildContext context, UserState userState, User user) {
+    return OutlineButton(
+      textColor: Colors.blue,
+      child: Text('ログイン'),
+      onPressed: () async {
+        // バリデーションチェック
+        if (_formKey.currentState.validate()) {
+          try {
+            user = await UserLogin(userState, email, password);
+            // チャット画面に遷移＋ログイン画面を破棄
+            await Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (context) {
+                // ユーザー情報を渡す
+                return ReminderPage(user);
+              }),
+            );
+          } catch (e) {
+            // ログインに失敗した場合
+            setState(() {
+              infoText = "ログインに失敗しました。メールアドレスかパスワードに誤りがあります。";
+            });
+            print(e.message);
+          }
+        }
+      },
     );
   }
 
@@ -141,5 +201,31 @@ class _LoginPageState extends State<LoginPage> {
     userState.setUser(user);
 
     return user;
+  }
+
+  EmailValidation(String email) {
+    String result;
+    if (email.isEmpty) {
+      result = 'メールアドレスを入力してください。';
+    } else if (email.indexOf('@') == -1) {
+      result = '正しいメールアドレスを入力してください。';
+    } else {
+      result = null;
+    }
+    return result;
+  }
+
+  PasswordValidation(String password) {
+    String result;
+    String pattern =
+        r'^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[!@#\$&*~]).{8,}$';
+    if (password.isEmpty) {
+      result = 'パスワードを入力してください。';
+    } else if (!RegExp(pattern).hasMatch(password)) {
+      result = 'パスワードは半角英小文字大文字数字と記号をそれぞれ1種類以上含む8文字以上入力してください。';
+    } else {
+      result = null;
+    }
+    return result;
   }
 }

@@ -2,8 +2,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_kindle/user_state.dart';
 import 'package:provider/provider.dart';
+import 'package:reminder_app/user_state.dart';
 
 import 'add_post_page.dart';
 import 'login_page.dart';
