@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:reminder_app/user_state.dart';
 
-import 'chat_page.dart';
+import 'reminder_list_page.dart';
 
 class LoginPage extends StatefulWidget {
   @override
@@ -30,11 +30,9 @@ class _LoginPageState extends State<LoginPage> {
     final UserState userState = Provider.of<UserState>(context);
     User user;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Reminder App'),
-      ),
       body: Center(
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Padding(
               padding: const EdgeInsets.all(16.0),
@@ -182,7 +180,6 @@ class _LoginPageState extends State<LoginPage> {
       email: email,
       password: password,
     );
-    print(email);
     final User user = result.user;
     // ユーザー情報を更新
     userState.setUser(user);

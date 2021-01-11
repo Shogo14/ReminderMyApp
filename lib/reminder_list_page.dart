@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:reminder_app/user_state.dart';
 
-import 'add_post_page.dart';
+import 'add_reminder_page.dart';
 import 'login_page.dart';
 
 class ReminderPage extends StatelessWidget {
@@ -49,50 +49,7 @@ class ReminderPage extends StatelessWidget {
           Expanded(
             // FutureBuilder
             // 非同期処理の結果を元にWidgetを作れる
-            child: StreamBuilder<QuerySnapshot>(
-              // 投稿メッセージ一覧を取得（非同期処理）
-              // 投稿日時でソート
-              stream: FirebaseFirestore.instance
-                  .collection('posts')
-                  .orderBy('date')
-                  .snapshots(),
-              builder: (context, snapshot) {
-                // データが取得できた場合
-                if (snapshot.hasData) {
-                  final List<DocumentSnapshot> documents = snapshot.data.docs;
-                  // 取得した投稿メッセージ一覧を元にリスト表示
-                  return ListView(
-                    children: documents.map((document) {
-                      IconButton deleteIcon;
-                      // 自分の投稿メッセージの場合は削除ボタンを表示
-                      if (document['email'] == user.email) {
-                        deleteIcon = IconButton(
-                          icon: Icon(Icons.delete),
-                          onPressed: () async {
-                            // 投稿メッセージのドキュメントを削除
-                            await FirebaseFirestore.instance
-                                .collection('posts')
-                                .doc(document.id)
-                                .delete();
-                          },
-                        );
-                      }
-                      return Card(
-                        child: ListTile(
-                          title: Text(document['text']),
-                          subtitle: Text(document['email']),
-                          trailing: deleteIcon,
-                        ),
-                      );
-                    }).toList(),
-                  );
-                }
-                // データが読込中の場合
-                return Center(
-                  child: Text('読込中...'),
-                );
-              },
-            ),
+            child: ReminderLists(),
           ),
         ],
       ),
@@ -102,11 +59,70 @@ class ReminderPage extends StatelessWidget {
           // 投稿画面に遷移
           await Navigator.of(context).push(
             MaterialPageRoute(builder: (context) {
-              return AddPostPage(user);
+              return AddReminderPage(user);
             }),
           );
         },
       ),
+    );
+  }
+
+  StreamBuilder ReminderLists() {
+    return StreamBuilder<QuerySnapshot>(
+      // 投稿メッセージ一覧を取得（非同期処理）
+      // 投稿日時でソート
+      stream: FirebaseFirestore.instance
+          .collection('reminders')
+          .orderBy('date')
+          .snapshots(),
+      builder: (context, snapshot) {
+        // データが取得できた場合
+        if (snapshot.hasData) {
+          final Iterable<DocumentSnapshot> documents =
+              snapshot.data.docs.where((doc) => doc['uid'] == user.uid);
+          // 取得した投稿メッセージ一覧を元にリスト表示
+          return ListView(
+            children: documents.map((document) {
+              IconButton deleteIcon;
+              deleteIcon = IconButton(
+                icon: Icon(Icons.delete),
+                onPressed: () async {
+                  // 投稿メッセージのドキュメントを削除
+                  await FirebaseFirestore.instance
+                      .collection('reminders')
+                      .doc(document.id)
+                      .delete();
+                },
+              );
+              IconButton updateIcon;
+              updateIcon = IconButton(
+                icon: Icon(Icons.edit),
+                onPressed: () async {
+                  // TODO:
+                  print('update');
+                },
+              );
+              return Card(
+                child: ListTile(
+                  title: Text(document['title']),
+                  subtitle: Text('店舗名：' + document['shop']),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      updateIcon,
+                      deleteIcon,
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          );
+        }
+        // データが読込中の場合
+        return Center(
+          child: Text('読込中...'),
+        );
+      },
     );
   }
 }
